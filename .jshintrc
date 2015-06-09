@@ -1,0 +1,12 @@
+{
+  "curly": true,
+  "eqeqeq": true,
+  "forin": true,
+  "latedef": true,
+  "maxdepth": 5,
+  "noarg": true,
+  "undef": true,
+  "eqnull": true,
+  "node": true
+}
+
