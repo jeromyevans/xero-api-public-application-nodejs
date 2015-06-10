@@ -1,18 +1,17 @@
 {
-  "name": "quicklook-xero-client",
+  "name": "xero-api-public-application",
   "version": "1.0.0",
-  "description": "Implements a Xero API client",
-  "main": "index.js",
+  "description": "A Xero PUBLIC application using the Xero API implemented in node.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git@bitbucket.org:pirouettegroup/quicklook-xero-client.git"
+    "url": "git@github.com:jeromyevans/xero-api-public-application-nodejs.git"
   },
   "author": "Jeromy Evans",
-  "license": "All Rights Reserved",
-  "private": true,
+  "license": "MIT",
   "devDependencies": {
     "grunt": "^0.4.5",
     "grunt-contrib-jshint": "^0.11.2"
@@ -22,7 +21,6 @@
     "hapi": "^8.6.1",
     "oauth": "^0.9.13",
     "path": "^0.11.14",
-    "xml2js": "^0.4.9",
     "yar": "^3.0.3"
   }
 }

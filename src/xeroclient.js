@@ -3,9 +3,9 @@ var OAuth = require("oauth");
 var REQUEST_URL = 'https://api.xero.com/oauth/RequestToken';
 var ACCESS_URL = 'https://api.xero.com/oauth/AccessToken';
 var AUTHORIZE_URL = 'https://api.xero.com/oauth/Authorize?oauth_token=';
-var CONSUMER_KEY = 'QXKPJMEYT4GW3SQCMMUALZAHMHNNNM';
-var CONSUMER_SECRET = 'HYXKDWDLZDHFK3QUQ87DAY1DVNVXPH';
-var CALLBACK_URL = 'http://localhost:8001/callback';
+var CONSUMER_KEY = 'QXKPJMEYT4GW3SQCMMUALZAHMHNNNM';    // use your app key
+var CONSUMER_SECRET = 'HYXKDWDLZDHFK3QUQ87DAY1DVNVXPH'; // use your app secret
+var CALLBACK_URL = 'http://localhost:8001/callback';    // points to your callback endpoint
 
 // Xero API defaults to application/xml content-type
 var customHeaders = {
@@ -25,6 +25,8 @@ var oauth = new OAuth.OAuth(
     customHeaders
 );
 
+// This is important - Xero will redirect to this URL after successful authentication
+// and provide the request token as query parameters
 oauth._authorize_callback=CALLBACK_URL;
 
 // Initiate the request to Xero to get an oAuth Request Token.

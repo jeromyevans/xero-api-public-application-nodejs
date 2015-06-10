@@ -41,22 +41,6 @@ server.route({
   }
 });
 
-server.route({
-  method: 'GET',
-  path: '/failed',
-  handler: function(request, reply) {
-    reply.view('failed')
-  }
-});
-
-server.route({
-  method: 'GET',
-  path: '/success',
-  handler: function(request, reply) {
-    reply.view('success')
-  }
-});
-
 // this is the user-accessed resource that initiates the authentication with xero.
 // the user will eventually be redirected to Xero's authorize page
 server.route({

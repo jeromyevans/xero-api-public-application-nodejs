@@ -1,10 +1,5 @@
 'use strict';
 
-/*
- * quicklook-xero-client
- *
- */
-
 module.exports = function(grunt) {
 
     // Project configuration.
