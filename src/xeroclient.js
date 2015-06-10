@@ -1,11 +1,17 @@
 var OAuth = require("oauth");
-var Xml2js = require('xml2js')
 
 var REQUEST_URL = 'https://api.xero.com/oauth/RequestToken';
 var ACCESS_URL = 'https://api.xero.com/oauth/AccessToken';
+var AUTHORIZE_URL = 'https://api.xero.com/oauth/Authorize?oauth_token=';
 var CONSUMER_KEY = 'QXKPJMEYT4GW3SQCMMUALZAHMHNNNM';
 var CONSUMER_SECRET = 'HYXKDWDLZDHFK3QUQ87DAY1DVNVXPH';
 var CALLBACK_URL = 'http://localhost:8001/callback';
+
+// Xero API defaults to application/xml content-type
+var customHeaders = {
+  "Accept" : "application/json",
+  "Connection": "close"
+};
 
 var oauth = new OAuth.OAuth(
     REQUEST_URL,
@@ -16,63 +22,36 @@ var oauth = new OAuth.OAuth(
     null,
     'HMAC-SHA1',
     null,
-    null
+    customHeaders
 );
 
 oauth._authorize_callback=CALLBACK_URL;
 
-exports.requestXeroAccess = function(request, reply) {
+// Initiate the request to Xero to get an oAuth Request Token.
+// With the token, we can send the user to Xero's authorize page
+exports.requestXeroRequestToken = function(request, reply) {
 
   oauth.getOAuthRequestToken(function(error, oauth_token, oauth_token_secret, results) {
-    if (error) {
 
+    if (error) {
       console.log(error);
 
-      reply("Authentication Failed!");
-
-    } else {
-
-      // store the token in the session created by hapi yar plugin
-      request.session.set('oauth', {
-        token: oauth_token,
-        token_secret: oauth_token_secret
-      });
-
-      reply.redirect('https://api.xero.com/oauth/Authorize?oauth_token='+oauth_token)
+      return reply.view('failed');
     }
+
+    // store the token in the session created by the hapi yar plugin
+    request.session.set('oauth', {
+      token: oauth_token,
+      token_secret: oauth_token_secret
+    });
+
+    // redirect the user to Xero's authorize url page
+    return reply.redirect(AUTHORIZE_URL+oauth_token);
   });
 };
 
-var getXeroOrganizaton = function(accessToken) {
-
-  oauth.get('https://api.xero.com/api.xro/2.0/Organisation',
-      accessToken,
-      function (error, data, res) {
-
-        if (error) {
-          console.error(error);
-        }
-
-        var xmlParser = new Xml2js.Parser();
-
-        xmlParser.parseString(data, {'normalizeTags': true}, function(parserError, oResponse) {
-
-          if (parserError) {
-            console.error(parserError);
-            return;
-          }
-
-          console.log(require('util').inspect(oResponse, false, null));
-        });
-
-        return;
-      });
-};
-
-
-// Perform the callback leg of 3-legged oAuth.
-// Given the auth_token and auth_verifiy from xero, request the access token
-// Requests that request
+// Perform the callback leg of the three-legged oAuth.
+// Given the auth_token and auth_verifier from xero, request the AccessToken
 exports.requestXeroAccessToken = function(request, reply) {
 
   var oAuthToken = request.query["oauth_token"];
@@ -81,61 +60,55 @@ exports.requestXeroAccessToken = function(request, reply) {
 
   var oAuthData = request.session.get('oauth');
 
-  if (oAuthData) {
-    oAuthData.verifier = oAuthVerifier;
+  if (!oAuthData) {
+    return reply.view('failed');
+  }
 
-    oauth.getOAuthAccessToken(
-        oAuthData.token,
-        oAuthData.token_secret,
-        oAuthData.verifier,
-        function (error, oauth_access_token, oauth_access_token_secret, results) {
+  oAuthData.verifier = oAuthVerifier;
 
-          if (error) {
-            console.log(request.params);
-            console.log(oAuthData);
-            console.log(error);
-            console.log(results);
-            return reply("Authentication Failure!");
-          }
+  oauth.getOAuthAccessToken(
+      oAuthData.token,
+      oAuthData.token_secret,
+      oAuthData.verifier,
+      function (error, oauth_access_token, oauth_access_token_secret, results) {
 
-          request.session.set('oauth', {
-            token: oAuthData.token,                // todo: necessary to retain?
-            token_secret: oAuthData.token_secret,  // todo: necessary to retain?
-            verifier: oAuthData.verifier,          // todo: necessary to retain?
-            access_token: oauth_access_token,
-            access_token_secret: oauth_access_token_secret
+        if (error) {
+          console.log(oAuthData);
+          console.log(error);
+          return reply("Authentication Failure!");
+        }
+
+        request.session.set('oauth', {
+          token: oAuthData.token,                // todo: necessary to retain?
+          token_secret: oAuthData.token_secret,  // todo: necessary to retain?
+          verifier: oAuthData.verifier,          // todo: necessary to retain?
+          access_token: oauth_access_token,
+          access_token_secret: oauth_access_token_secret
+        });
+
+        // now that we have authenticated we can access restricted endpoints
+        // via oauth.get() etc.
+
+        // This is asynchronous of course - we also have to send the user somewhere useful
+        // the access token and secret can be obtained from the session
+        oauth.get('https://api.xero.com/api.xro/2.0/Organisation',
+          oauth_access_token,
+          oauth_access_token_secret,
+          function (e, data, res) {
+            if (e) {
+              console.error(e);
+              return;
+            }
+
+            var oResponse = JSON.parse(data);
+
+            console.log(require('util').inspect(oResponse, false, null));
+
+            return;
           });
 
-          oauth.get('https://api.xero.com/api.xro/2.0/Organisation',
-              oauth_access_token,
-              oauth_access_token_secret,
-              function (e, data, res) {
-                if (e) {
-                  console.error(e);
-                }
+        return reply.view('success');
+      }
+  );
 
-                var xmlParser = new Xml2js.Parser({'normalizeTags': true});
-
-                xmlParser.parseString(data, function(parserError, oResponse) {
-
-                  if (parserError) {
-                    console.error(parserError);
-                    return;
-                  }
-
-                  console.log(require('util').inspect(oResponse, false, null));
-                });
-
-                return;
-              });
-
-          return reply("Authentication Successful");
-          // res.redirect('/'); // You might actually want to redirect!
-        }
-    );
-  }
-  else {
-    reply("No oauth data in session - reauthenticate");
-  }
 };
-
